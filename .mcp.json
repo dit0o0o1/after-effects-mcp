@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "AfterEffectsMCP": {
+      "command": "node",
+      "args": ["C:\\Users\\edito\\Desktop\\Files\\Codes\\AE-MCP\\build\\index.js"]
+    }
+  }
+}
