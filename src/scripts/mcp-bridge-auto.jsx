@@ -1337,6 +1337,41 @@ function getResultFilePath() {
     return bridgeFolder.fsName + "/ae_mcp_result.json";
 }
 
+// Log file path - mirrors the bridge folder (lets external tools read the panel log)
+function getLogFilePath() {
+    var userFolder = Folder.myDocuments;
+    var bridgeFolder = new Folder(userFolder.fsName + "/ae-mcp-bridge");
+    if (!bridgeFolder.exists) {
+        bridgeFolder.create();
+    }
+    return bridgeFolder.fsName + "/ae_bridge_log.txt";
+}
+
+// ISO timestamp helper - ExtendScript's Date has no toISOString()
+function toISOStringSafe(date) {
+    function pad(n) { return (n < 10 ? "0" : "") + n; }
+    function pad3(n) { return (n < 10 ? "00" : (n < 100 ? "0" : "")) + n; }
+    return date.getUTCFullYear() + "-" + pad(date.getUTCMonth() + 1) + "-" + pad(date.getUTCDate())
+        + "T" + pad(date.getUTCHours()) + ":" + pad(date.getUTCMinutes()) + ":" + pad(date.getUTCSeconds())
+        + "." + pad3(date.getUTCMilliseconds()) + "Z";
+}
+
+// Append a line to the on-disk log file; must never throw or it could break command execution
+function appendToLogFile(line) {
+    try {
+        var logFile = new File(getLogFilePath());
+        logFile.encoding = "UTF-8";
+        // Rotate (overwrite) if the log grows past ~512 KB to avoid unbounded growth
+        var mode = (logFile.exists && logFile.length > 524288) ? "w" : "a";
+        if (logFile.open(mode)) {
+            logFile.write(line + "\n");
+            logFile.close();
+        }
+    } catch (e) {
+        // swallow - logging must not affect bridge behavior
+    }
+}
+
 // --- setCompositionProperties: set duration, frameRate, etc. on active or named comp ---
 function setCompositionProperties(args) {
     try {
@@ -1608,7 +1643,7 @@ function executeCommand(command, args) {
         try {
             var resultObj = JSON.parse(resultString);
             // Add a timestamp to help identify if we're getting fresh results
-            resultObj._responseTimestamp = new Date().toISOString();
+            resultObj._responseTimestamp = toISOStringSafe(new Date());
             resultObj._commandExecuted = command;
             resultString = JSON.stringify(resultObj, null, 2);
             logToPanel("Added timestamp to result JSON for tracking freshness.");
@@ -1710,6 +1745,7 @@ function updateCommandStatus(status) {
 function logToPanel(message) {
     var timestamp = new Date().toLocaleTimeString();
     logText.text = timestamp + ": " + message + "\n" + logText.text;
+    appendToLogFile(timestamp + ": " + message);
 }
 
 // Check for new commands
