@@ -1433,7 +1433,7 @@ function setCompositionProperties(args) {
 function getProjectInfo() {
     var project = app.project;
     var result = {
-        projectName: project.file ? project.file.name : "Untitled Project",
+        projectName: project.file ? decodeURI(project.file.name) : "Untitled Project",
         path: project.file ? project.file.fsName : "",
         numItems: project.numItems,
         bitsPerChannel: project.bitsPerChannel,
@@ -1565,6 +1565,9 @@ function executeCommand(command, args) {
     statusText.text = "Running: " + command;
     panel.update();
 
+    // Group everything this command changes into ONE labeled AE undo step,
+    // so a single Ctrl+Z in After Effects reverts the whole MCP action.
+    app.beginUndoGroup("MCP: " + command);
     try {
         logToPanel("Attempting to execute: " + command); // Log before switch
         // Use a switch statement for clarity
@@ -1748,6 +1751,9 @@ function executeCommand(command, args) {
         logToPanel("Updating command status to error...");
         updateCommandStatus("error");
         logToPanel("Command status updated to error.");
+    } finally {
+        // Always close the undo group, even if the command threw
+        app.endUndoGroup();
     }
 }
 
