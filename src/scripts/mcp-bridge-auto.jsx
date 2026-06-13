@@ -26,9 +26,37 @@ function createComposition(args) {
         if (args.backgroundColor) {
             newComp.bgColor = bgColor;
         }
+        newComp.openInViewer();
         return JSON.stringify({
             status: "success", message: "Composition created successfully",
             composition: { name: newComp.name, id: newComp.id, width: newComp.width, height: newComp.height, pixelAspect: newComp.pixelAspect, duration: newComp.duration, frameRate: newComp.frameRate, bgColor: newComp.bgColor }
+        }, null, 2);
+    } catch (error) {
+        return JSON.stringify({ status: "error", message: error.toString() }, null, 2);
+    }
+}
+
+// --- openComposition: bring an existing comp into the viewer (target by name, id, or 1-based comp index) ---
+function openComposition(args) {
+    try {
+        var project = app.project;
+        var target = null;
+        var compNumber = 0;
+        for (var i = 1; i <= project.numItems; i++) {
+            var item = project.item(i);
+            if (!(item instanceof CompItem)) continue;
+            compNumber++;
+            if (args.name != null && item.name === String(args.name)) { target = item; break; }
+            if (args.id != null && item.id === parseInt(args.id, 10)) { target = item; break; }
+            if (args.index != null && compNumber === parseInt(args.index, 10)) { target = item; break; }
+        }
+        if (!target) {
+            return JSON.stringify({ status: "error", message: "Composition not found. Provide a valid name, id, or 1-based index." }, null, 2);
+        }
+        target.openInViewer();
+        return JSON.stringify({
+            status: "success", message: "Composition opened",
+            composition: { id: target.id, name: target.name }
         }, null, 2);
     } catch (error) {
         return JSON.stringify({ status: "error", message: error.toString() }, null, 2);
@@ -1554,6 +1582,11 @@ function executeCommand(command, args) {
                 logToPanel("Calling createComposition function...");
                 result = createComposition(args);
                 logToPanel("Returned from createComposition.");
+                break;
+            case "openComposition":
+                logToPanel("Calling openComposition function...");
+                result = openComposition(args);
+                logToPanel("Returned from openComposition.");
                 break;
             case "createTextLayer":
                 logToPanel("Calling createTextLayer function...");

@@ -175,6 +175,7 @@ server.tool(
       "getProjectInfo", 
       "getLayerInfo", 
       "createComposition",
+      "openComposition",
       "createTextLayer",
       "createShapeLayer",
       "createSolidLayer",
