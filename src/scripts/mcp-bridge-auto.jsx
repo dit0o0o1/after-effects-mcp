@@ -21,16 +21,28 @@ function createComposition(args) {
         var pixelAspect = parseFloat(args.pixelAspect) || 1.0;
         var duration = parseFloat(args.duration) || 10.0;
         var frameRate = parseFloat(args.frameRate) || 30.0;
-        var bgColor = args.backgroundColor ? [args.backgroundColor.r/255, args.backgroundColor.g/255, args.backgroundColor.b/255] : [0, 0, 0];
         var newComp = app.project.items.addComp(name, width, height, pixelAspect, duration, frameRate);
+        // Background color is OPTIONAL and must NEVER fail comp creation.
+        // Accept {r,g,b} or [r,g,b], in 0-255 or 0-1; silently ignore anything invalid.
+        var bgWarning = null;
         if (args.backgroundColor) {
-            newComp.bgColor = bgColor;
+            try {
+                var bc = args.backgroundColor;
+                var rgb = (bc instanceof Array) ? [bc[0], bc[1], bc[2]] : [bc.r, bc.g, bc.b];
+                if (Math.max(rgb[0], rgb[1], rgb[2]) > 1) { rgb = [rgb[0] / 255, rgb[1] / 255, rgb[2] / 255]; }
+                if (isNaN(rgb[0]) || isNaN(rgb[1]) || isNaN(rgb[2])) { throw new Error("invalid color components"); }
+                newComp.bgColor = [rgb[0], rgb[1], rgb[2]];
+            } catch (bgErr) {
+                bgWarning = "backgroundColor ignored (expected {r,g,b} or [r,g,b]): " + bgErr.toString();
+            }
         }
         newComp.openInViewer();
-        return JSON.stringify({
+        var resultObj = {
             status: "success", message: "Composition created successfully",
             composition: { name: newComp.name, id: newComp.id, width: newComp.width, height: newComp.height, pixelAspect: newComp.pixelAspect, duration: newComp.duration, frameRate: newComp.frameRate, bgColor: newComp.bgColor }
-        }, null, 2);
+        };
+        if (bgWarning) { resultObj.warning = bgWarning; }
+        return JSON.stringify(resultObj, null, 2);
     } catch (error) {
         return JSON.stringify({ status: "error", message: error.toString() }, null, 2);
     }
