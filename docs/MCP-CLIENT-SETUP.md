@@ -5,6 +5,10 @@ This document explains how to "register" the After Effects MCP server with an AI
 and exactly how `.mcp.json` works. It also covers what survives a Claude restart and a PC
 reboot.
 
+> Just want to *use* After Effects from an ordinary chat — no repo, no folder, no project
+> context? Skip to **§8 (Claude desktop chat)**. Confused by `node` / the `command` field?
+> See **§9**.
+
 > TL;DR for this machine: we use the project **`.mcp.json`** (already configured and path-
 > corrected). You must start a **fresh Claude Code session** once to load + approve it.
 > After that it persists across PC reboots; the only recurring manual step is reopening the
@@ -44,12 +48,12 @@ desktop app, which doesn't ship the standalone CLI). So `claude mcp add -s local
 is unavailable — registration here is done by editing config files (`.mcp.json` for project
 scope).
 
-### Not the same thing: Claude Desktop *chat* config
+### A different surface: the Claude Desktop *chat*
 `claude_desktop_config.json` (Claude Desktop → Settings → Developer → Edit Config) is a
-**different product surface** — the plain desktop *chat*, not *Claude Code*. It has its own
-separate MCP list. Only configure the server there if you want to drive After Effects from
-the chat window. For Claude Code you use the methods in the table above. Putting it in both
-places isn't harmful, just a redundant duplicate to maintain.
+**separate product surface** — the plain desktop *chat*, not *Claude Code* — with its own
+MCP list. This is the easiest way to **use** (vs. develop) the MCP: a chat has no working
+folder and loads no repo context. Full setup is in **§8**. It coexists fine with the Claude
+Code registration above (same server, same bridge) — just drive AE from one client at a time.
 
 ### Precedence
 If the same server name exists in more than one scope, the most specific wins:
@@ -185,3 +189,67 @@ restored do you need to reopen it via `Window > mcp-bridge-auto.jsx`.
 | Tools listed but commands hang / time out | AE panel not open, Auto-run off, or write permission off | Open panel, check Auto-run, enable *Allow Scripts to Write Files and Access Network*, restart AE |
 | Server fails to launch | Wrong/way `args` path, or `build/index.js` missing | Fix the absolute path in `.mcp.json`; `npm run build` |
 | Worked before reboot, not after | Bridge panel simply isn't reopened | `Window > mcp-bridge-auto.jsx`, ensure Auto-run on |
+
+---
+
+## 8. Using it from the Claude desktop chat (the no-repo way)
+
+The desktop **chat** is the simplest way to *use* the MCP day-to-day: no folder, no repo, no
+project context — just a conversation with the AE tools attached. (Keep Claude Code in the
+repo for *improving* the MCP; use the chat for *driving* AE.)
+
+**One-time setup:**
+1. Claude Desktop → **Settings → Developer → Edit Config** — opens
+   `claude_desktop_config.json` (Windows: `%APPDATA%\Claude\claude_desktop_config.json`).
+2. **Merge** this into `mcpServers` (don't overwrite the file — keep your other settings):
+   ```json
+   {
+     "mcpServers": {
+       "AfterEffectsMCP": {
+         "command": "node",
+         "args": ["C:\\Users\\dit0o\\Desktop\\Code\\after-effects-mcp\\build\\index.js"]
+       }
+     }
+   }
+   ```
+3. **Fully quit and reopen** the desktop app (quit from the system tray too) — MCP servers
+   load only at app startup. (The app may rewrite this config on launch; it preserves your
+   `mcpServers` entry.)
+4. In a chat, confirm `AfterEffectsMCP` shows connected (tools / 🔌 indicator), then issue AE
+   commands in plain language.
+
+**Same prerequisites as any client:** After Effects open, the **MCP Bridge Auto** panel
+running with **Auto-run** on, and the *Allow Scripts to Write Files and Access Network* pref
+enabled. The chat only swaps the *client*; the file bridge to AE is identical.
+
+**If the server shows as failed:** almost always the app can't find `node` (see §9). Replace
+`"command": "node"` with the full path, e.g. `"command": "C:\\Program Files\\nodejs\\node.exe"`.
+
+**Known rough edges (chat client):** the chat fires tool calls without the careful
+one-at-a-time pacing a dev session uses, so a multi-step request can occasionally **double a
+step** (e.g. create two comps) or leave the **wrong comp focused**. The bridge has a single
+command slot (`ae_command.json`) processed one at a time, so rapid commands can step on each
+other. For now: ask for one thing at a time, or re-state precisely. (Candidate future fix: a
+batch/transaction command, or client-side verification between steps.)
+
+---
+
+## 9. What `node` and the `command` field mean (plain-English)
+
+The MCP server is a small **JavaScript program** (`build/index.js`). JavaScript needs a
+runtime to run outside a web browser — that runtime is **Node.js**, invoked as `node`. So:
+
+- `"command": "node"` + `"args": ["…/build/index.js"]` means literally *"run the program
+  Node.js and hand it this file to execute."* Like double-clicking a `.docx` opens it in Word,
+  `node` is the "app" that opens/runs a `.js` file.
+- **Why the bare name `node` usually works:** your OS keeps a list of folders called the
+  **PATH**. When something asks to run `node`, the OS searches those folders for a program of
+  that name. Node's install folder (`C:\Program Files\nodejs`) is on the PATH, so `node`
+  resolves from anywhere.
+- **Why it can fail:** if a specific app starts with a PATH that *doesn't* include Node's
+  folder, it can't find `node` by name and the server won't launch. The fix is to skip the
+  name search and give the **full path**: `"command": "C:\\Program Files\\nodejs\\node.exe"`.
+
+In one line: **`node` is the engine that runs the server's code; PATH is how the OS finds
+`node` by name; the full path is the fallback when that name-lookup fails.** (Node.js is a
+prerequisite for the whole project — it's also what `npm install` and `npm run build` use.)
