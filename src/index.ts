@@ -176,6 +176,7 @@ server.tool(
       "getLayerInfo", 
       "createComposition",
       "openComposition",
+      "deselectAll",
       "createTextLayer",
       "createShapeLayer",
       "createSolidLayer",

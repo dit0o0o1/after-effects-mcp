@@ -633,6 +633,8 @@ function setLayerProperties(args) {
         // --- General Property Handling ---
         var threeDLayer = args.threeDLayer;
         if (threeDLayer !== undefined && threeDLayer !== null) { layer.threeDLayer = !!threeDLayer; changedProperties.push("threeDLayer"); }
+        var motionBlur = args.motionBlur;
+        if (motionBlur !== undefined && motionBlur !== null) { layer.motionBlur = !!motionBlur; changedProperties.push("motionBlur"); }
         if (position !== undefined && position !== null) {
             var posProp = layer.property("Position");
             if (posProp.numKeys > 0) { while (posProp.numKeys > 0) { posProp.removeKey(1); } }
@@ -662,6 +664,7 @@ function setLayerProperties(args) {
             name: layer.name,
             index: layer.index,
             threeDLayer: layer.threeDLayer,
+            motionBlur: layer.motionBlur,
             position: layer.property("Position").value,
             scale: layer.property("Scale").value,
             rotation: layer.threeDLayer ? layer.property("Z Rotation").value : layer.property("Rotation").value, // Return appropriate rotation
@@ -1419,11 +1422,36 @@ function setCompositionProperties(args) {
         if (args.width !== undefined && args.width !== null && args.height !== undefined && args.height !== null) {
             comp.width = args.width; comp.height = args.height; changed.push("dimensions");
         }
+        if (args.motionBlur !== undefined && args.motionBlur !== null) { comp.motionBlur = !!args.motionBlur; changed.push("motionBlur"); }
+        if (args.shutterAngle !== undefined && args.shutterAngle !== null) { comp.motionBlurShutterAngle = args.shutterAngle; changed.push("shutterAngle"); }
         return JSON.stringify({
             status: "success",
-            composition: { name: comp.name, duration: comp.duration, frameRate: comp.frameRate, width: comp.width, height: comp.height },
+            composition: { name: comp.name, duration: comp.duration, frameRate: comp.frameRate, width: comp.width, height: comp.height, motionBlur: comp.motionBlur, shutterAngle: comp.motionBlurShutterAngle },
             changedProperties: changed
         }, null, 2);
+    } catch (error) {
+        return JSON.stringify({ status: "error", message: error.toString() }, null, 2);
+    }
+}
+
+// --- deselectAll: clear layer selection in a comp (UI tidy; targets named comp or active) ---
+function deselectAll(args) {
+    try {
+        var compName = (args && args.compName) || "";
+        var comp = null;
+        for (var i = 1; i <= app.project.numItems; i++) {
+            var item = app.project.item(i);
+            if (item instanceof CompItem && item.name === compName) { comp = item; break; }
+        }
+        if (!comp) {
+            if (app.project.activeItem instanceof CompItem) { comp = app.project.activeItem; }
+            else { throw new Error("No composition found with name '" + compName + "' and no active composition"); }
+        }
+        var count = 0;
+        for (var j = 1; j <= comp.numLayers; j++) {
+            if (comp.layer(j).selected) { comp.layer(j).selected = false; count++; }
+        }
+        return JSON.stringify({ status: "success", message: "Deselected layers", deselectedCount: count, composition: comp.name }, null, 2);
     } catch (error) {
         return JSON.stringify({ status: "error", message: error.toString() }, null, 2);
     }
@@ -1590,6 +1618,9 @@ function executeCommand(command, args) {
                 logToPanel("Calling openComposition function...");
                 result = openComposition(args);
                 logToPanel("Returned from openComposition.");
+                break;
+            case "deselectAll":
+                result = deselectAll(args);
                 break;
             case "createTextLayer":
                 logToPanel("Calling createTextLayer function...");

@@ -31,6 +31,8 @@ the command `completed` (or `error`). Commands are processed **one at a time, in
 | **Result metadata** | Every result file gets `_commandExecuted` (the command name) and `_responseTimestamp` (ISO, UTC) appended, for freshness/identity checks. |
 | **Logging** | `logToPanel()` writes to the panel UI **and** appends to `ae_bridge_log.txt`, which auto-rotates (overwrites) once it passes ~512 KB. |
 | **AE 2025+ UI** | On AE 2025+ the panel runs as a **floating palette only** (dockable panels unsupported). Opening it from the `Window` menu also leaves a separate **blank docked panel** — harmless; the floating window is the functional one. |
+| **Motion blur** | `setCompositionProperties { motionBlur, shutterAngle }` toggles the comp's master motion-blur enable (+ shutter angle); `setLayerProperties { motionBlur }` flips a layer's switch. **Both** must be on for blur to render. |
+| **Deselect** | `deselectAll` clears layer selection in the target comp (named or active) — a UI tidy; the MCP otherwise edits project data, not UI state. |
 | **Result staleness** | If `ae_mcp_result.json` hasn't been updated within ~30 s, the server flags the result as possibly stale (usually means the panel isn't running / Auto-run is off). |
 
 ## Undo behavior
@@ -52,7 +54,7 @@ the command `completed` (or `error`). Commands are processed **one at a time, in
 Executed by the panel (the `command` field in `ae_command.json`):
 
 `getProjectInfo`, `listCompositions`, `getLayerInfo`, `createComposition`, `openComposition`,
-`createTextLayer`, `createShapeLayer`, `createSolidLayer`, `setLayerProperties`,
+`deselectAll`, `createTextLayer`, `createShapeLayer`, `createSolidLayer`, `setLayerProperties`,
 `batchSetLayerProperties`, `setCompositionProperties`, `setLayerKeyframe`,
 `setLayerExpression`, `applyEffect`, `applyEffectTemplate`, `createCamera`, `duplicateLayer`,
 `deleteLayer`, `setLayerMask`, `bridgeTestEffects`.
